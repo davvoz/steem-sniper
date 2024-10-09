@@ -81,6 +81,3 @@ This bot is for educational purposes only. Use at your own risk. The authors are
 
 Contributions, issues, and feature requests are welcome. Feel free to check [issues page](https://github.com/yourusername/steem-sniper-bot/issues) if you want to contribute.
 
-## License
-
-[MIT](https://choosealicense.com/licenses/mit/)
