@@ -20,7 +20,7 @@ if __name__ == "__main__":
                             add_comment=True, 
                             add_image=True,
                             comment_text="Bel post!",
-                            image_path="_0d47c611-0fa1-4df6-898c-b6620812e18d.jpeg")
+                            image_path="immagine.jpeg")
     
     # Configure individual authors
     sniper.configure_author("gue22", 
@@ -30,7 +30,7 @@ if __name__ == "__main__":
                             add_comment=True, 
                             add_image=True,
                             comment_text="Bel post!",
-                            image_path="_0d47c611-0fa1-4df6-898c-b6620812e18d.jpeg")
+                            image_path="immagine.jpeg")
     
     sniper.configure_author("aston.villa", 
                             vote_percentage=75, 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
                             add_comment=True, 
                             add_image=True,
                             comment_text="Bel post!",
-                            image_path="_0d47c611-0fa1-4df6-898c-b6620812e18d.jpeg")
+                            image_path="immagine.jpeg")
     
     sniper.configure_author("im-ridd",
                             vote_percentage=75, 
@@ -64,7 +64,7 @@ if __name__ == "__main__":
                             add_comment=True, 
                             add_image=True,
                             comment_text="Bel post!",
-                            image_path="_0d47c611-0fa1-4df6-898c-b6620812e18d.jpeg")
+                            image_path="immagine.jpeg")
     
     sniper.configure_author("tasubot",
                             vote_percentage=75, 
@@ -73,7 +73,7 @@ if __name__ == "__main__":
                             add_comment=True, 
                             add_image=True,
                             comment_text="Bel post!",
-                            image_path="_0d47c611-0fa1-4df6-898c-b6620812e18d.jpeg")
+                            image_path="immagine.jpeg")
     
     sniper.configure_author("stefano.massari",
                             vote_percentage=75, 
@@ -90,7 +90,7 @@ if __name__ == "__main__":
                             add_comment=True, 
                             add_image=True,
                             comment_text="Bel post!",
-                            image_path="_0d47c611-0fa1-4df6-898c-b6620812e18d.jpeg")
+                            image_path="immagine.jpeg")
     
     sniper.configure_author("mikitaly",
                             vote_percentage=75, 
@@ -107,7 +107,7 @@ if __name__ == "__main__":
                             add_comment=True, 
                             add_image=True,
                             comment_text="Bel post!",
-                            image_path="_0d47c611-0fa1-4df6-898c-b6620812e18d.jpeg")
+                            image_path="immagine.jpeg")
     
     sniper.configure_author("frafiomatale",
                             vote_percentage=75, 
@@ -124,7 +124,7 @@ if __name__ == "__main__":
                             add_comment=True, 
                             add_image=True,
                             comment_text="Bel post!",
-                            image_path="_0d47c611-0fa1-4df6-898c-b6620812e18d.jpeg")
+                            image_path="immagine.jpeg")
     
     
     sniper.start()
