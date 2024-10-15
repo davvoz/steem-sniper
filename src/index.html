@@ -246,8 +246,45 @@
             login: { title: 'Login', render: renderLogin },
             register: { title: 'Register', render: renderRegister },
             dashboard: { title: 'Dashboard', render: renderDashboard },
-            authors: { title: 'Manage Authors', render: renderAuthors }
+            authors: { title: 'Manage Authors', render: renderAuthors },
+            bot: { title: 'Bot', render: renderBot }
         };
+
+        function renderBot() {
+            $('#mainContent').innerHTML = `
+            <div>
+                <h2 class="text-2xl font-bold mb-4">Bot</h2>
+                <button id="startBotBtn" class="cyberpunk-button px-4 py-2 rounded mb-4">
+                    <i class="fas fa-play mr-2"></i>Start Bot
+                </button>
+                <button id="stopBotBtn" class="cyberpunk-button bg-red-500 px-4 py-2 rounded">
+                    <i class="fas fa-stop mr-2"></i>Stop Bot
+                </button>
+            </div>
+        `;
+            $('#startBotBtn').addEventListener('click', startBot);
+            $('#stopBotBtn').addEventListener('click', stopBot);
+        }
+
+        async function startBot() {
+            try {
+                const data = { username: localStorage.getItem('username') };
+                await api.post('/start_bot', data);
+                toastr.success('Bot started successfully');
+            } catch (error) {
+                toastr.error(error.error || 'Failed to start bot');
+            }
+        }
+
+        async function stopBot() {
+            try {
+                await api.post('/stop_bot');
+                toastr.success('Bot stopped successfully');
+            } catch (error) {
+                toastr.error(error.error || 'Failed to stop bot');
+            }
+        }
+
 
         function updateNavigation() {
             const navLinks = $('#navLinks');
@@ -255,7 +292,7 @@
             const isLoggedIn = !!localStorage.getItem('username');
 
             if (isLoggedIn) {
-                ['dashboard', 'authors'].forEach(route => {
+                ['dashboard', 'authors','bot'].forEach(route => {
                     navLinks.innerHTML += `<a href="#" class="cyberpunk-button px-3 py-1 rounded" onclick="navigate('${route}')">${routes[route].title}</a>`;
                 });
                 navLinks.innerHTML += `<a href="#" class="cyberpunk-button px-3 py-1 rounded" onclick="logout()">Logout</a>`;

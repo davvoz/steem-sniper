@@ -4,7 +4,12 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import CORS
+from sniper_biz import SteemSniperBackend
+
 import os
+
+
+sniper_bot = SteemSniperBackend()
 
 app = Flask(__name__)
 CORS(app)  # Abilita CORS per tutte le route
@@ -225,6 +230,42 @@ def get_all():
                 "authors": authors
             })
         return jsonify(response), 200
+
+@app.route('/start_bot', methods=['POST'])
+def start_bot():
+    data = request.json
+    user = User.query.filter_by(username=data['username']).first()
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Configura il bot con i dati dell'utente
+    sniper_bot.configure(posting_key=user.posting_key, voter=user.voter, interval=user.interval)
+
+    # Configura gli autori nel bot
+    for author in user.authors:
+        sniper_bot.configure_author(
+            author.name,
+            vote_percentage=author.vote_percentage,
+            post_delay_minutes=author.post_delay_minutes,
+            daily_vote_limit=author.daily_vote_limit,
+            add_comment=author.add_comment,
+            add_image=author.add_image,
+            comment_text=author.comment_text,
+            image_path=author.image_path
+        )
+
+    # Avvia il bot
+    sniper_bot.start()
+
+    return jsonify({"message": "Bot started successfully"}), 200
+
+
+@app.route('/stop_bot', methods=['POST'])
+def stop_bot():
+    # Ferma il bot
+    sniper_bot.stop()
+    return jsonify({"message": "Bot stopped successfully"}), 200
 
 if __name__ == '__main__':
         app.run(debug=True)
