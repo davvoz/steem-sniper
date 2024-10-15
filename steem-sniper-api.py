@@ -59,6 +59,7 @@ def register():
 
 @app.route('/login', methods=['POST'])
 def login():
+        print(request.json)
         data = request.json
         user = User.query.filter_by(username=data['username']).first()
         if user and user.check_password(data['password']):
@@ -67,6 +68,7 @@ def login():
 
 @app.route('/configure_author', methods=['POST'])
 def configure_author():
+        print(request.json)
         data = request.json
         user = User.query.filter_by(username=data['username']).first()
         if not user:
@@ -90,6 +92,7 @@ def configure_author():
 
 @app.route('/get_authors/<username>', methods=['GET'])
 def get_authors(username):
+        print(username)
         user = User.query.filter_by(username=username).first()
         if not user:
             return jsonify({"error": "User not found"}), 404
@@ -106,6 +109,122 @@ def get_authors(username):
             } for author in user.authors
         ]
         return jsonify(authors), 200
+
+@app.route('/delete_author', methods=['POST'])
+def delete_author():
+        print(request.json)
+        data = request.json
+        user = User.query.filter_by(username=data['username']).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        author = Author.query.filter_by(name=data['author_name'], user_id=user.id).first()
+        if not author:
+            return jsonify({"error": "Author not found"}), 404
+        db.session.delete(author)
+        db.session.commit()
+        return jsonify({"message": "Author deleted successfully"}), 200
+    
+@app.route('/update_author', methods=['PUT'])
+def update_author():
+        print(request.json)
+        data = request.json
+        user = User.query.filter_by(username=data['username']).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        author = Author.query.filter_by(name=data['author_name'], user_id=user.id).first()
+        if not author:
+            return jsonify({"error": "Author not found"}), 404
+        author.vote_percentage = data['vote_percentage']
+        author.post_delay_minutes = data['post_delay_minutes']
+        author.daily_vote_limit = data['daily_vote_limit']
+        author.add_comment = data['add_comment']
+        author.add_image = data['add_image']
+        author.comment_text = data.get('comment_text')
+        author.image_path = data.get('image_path')
+        db.session.commit()
+        return jsonify({"message": "Author updated successfully"}), 200
+#get_author
+@app.route('/get_author/<username>/<author_name>', methods=['GET'])
+def get_author(username, author_name):
+        print(username)
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        author = Author.query.filter_by(name=author_name, user_id=user.id).first()
+        if not author:
+            return jsonify({"error": "Author not found"}), 404
+        return jsonify({
+            "name": author.name,
+            "vote_percentage": author.vote_percentage,
+            "post_delay_minutes": author.post_delay_minutes,
+            "daily_vote_limit": author.daily_vote_limit,
+            "add_comment": author.add_comment,
+            "add_image": author.add_image,
+            "comment_text": author.comment_text,
+            "image_path": author.image_path
+        }), 200
+#bulk_update_authors
+@app.route('/bulk_update_authors', methods=['PUT'])
+def bulk_update_authors():
+    print(request.json)
+    data = request.json
+    user = User.query.filter_by(username=data['username']).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+#dell'autore ci arriva solo il nome per es ['gigi','franco','pippo','pluto','paperino','roberto']
+    for author_name in data['authors']:
+        author = Author.query.filter_by(name=author_name, user_id=user.id).first()
+        if not author:
+            return jsonify({"error": "Author not found"}), 404
+        author.vote_percentage = data['vote_percentage']
+        author.post_delay_minutes = data['post_delay_minutes']
+        author.daily_vote_limit = data['daily_vote_limit']
+        author.add_comment = data.get('add_comment' , False)
+        author.add_image = data.get('add_image' , False)
+        author.comment_text = data.get('comment_text')
+        author.image_path = data.get('image_path')
+        db.session.commit()
+    return jsonify({"message": "Authors updated successfully"}), 200     
+#bulk_delete_authors
+@app.route('/bulk_delete_authors', methods=['POST'])
+def bulk_delete_authors():
+    print(request.json)
+    data = request.json
+    user = User.query.filter_by(username=data['username']).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    for author_name in data['authors']:
+        author = Author.query.filter_by(name=author_name, user_id=user.id).first()
+        if not author:
+            return jsonify({"error": "Author not found"}), 404
+        db.session.delete(author)
+        db.session.commit()
+    return jsonify({"message": "Authors deleted successfully"}), 200
+
+@app.route('/get_all', methods=['GET'])
+def get_all():
+        users = User.query.all()
+        response = []
+        for user in users:
+            authors = [
+                {
+                    "name": author.name,
+                    "vote_percentage": author.vote_percentage,
+                    "post_delay_minutes": author.post_delay_minutes,
+                    "daily_vote_limit": author.daily_vote_limit,
+                    "add_comment": author.add_comment,
+                    "add_image": author.add_image,
+                    "comment_text": author.comment_text,
+                    "image_path": author.image_path
+                } for author in user.authors
+            ]
+            response.append({
+                "username": user.username,
+                "voter": user.voter,
+                "interval": user.interval,
+                "authors": authors
+            })
+        return jsonify(response), 200
 
 if __name__ == '__main__':
         app.run(debug=True)
