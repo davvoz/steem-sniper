@@ -1,6 +1,8 @@
 
     # app.py
-from flask import Flask, request, jsonify
+import json
+import time
+from flask import Flask, Response, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import CORS
@@ -260,12 +262,26 @@ def start_bot():
 
     return jsonify({"message": "Bot started successfully"}), 200
 
-
 @app.route('/stop_bot', methods=['POST'])
 def stop_bot():
     # Ferma il bot
     sniper_bot.stop()
     return jsonify({"message": "Bot stopped successfully"}), 200
+
+@app.route('/stream_logs')
+def stream_logs():
+    def generate():
+        while True:
+            logs = sniper_bot.get_logs()
+            if logs:
+                yield f"data: {json.dumps(logs)}\n\n"
+            time.sleep(1)  # Check for new logs every second
+
+    return Response(generate(), mimetype='text/event-stream')
+
+@app.route('/get_bot_status')
+def get_bot_status():
+    return jsonify({"running": sniper_bot.running})
 
 if __name__ == '__main__':
         app.run(debug=True)

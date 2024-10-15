@@ -183,6 +183,22 @@
         .rounded {
             border-radius: 0.375rem;
         }
+
+        .p-4 {
+            padding: 1rem;
+        }
+
+        .mt-8 {
+            margin-top: 2rem;
+        }
+
+        .hide {
+            display: none;
+        }
+
+        .show {
+            display: block;
+        }
     </style>
 </head>
 
@@ -199,16 +215,22 @@
     <main id="mainContent" class="flex-grow container mx-auto mt-8 p-4">
         <!-- Main content will be dynamically inserted here -->
     </main>
-
+    <div class="container mx-auto mt-8 p-4 hide" id="logContainer">
+        <div class="log">
+            <pre id="log" class="text-white">
+                <!-- Log messages will be dynamically inserted here -->
+            </pre>
+        </div>
+    </div>
     <footer class="bg-gray-900 p-4 mt-8 text-center neon-border">
         <p>&copy; 2024 Steem Sniper. All rights reserved.</p>
     </footer>
 
     <script>
         // Utility functions
-         const API_URL = 'https://luciogiolli.pythonanywhere.com/';
-        
-        //const API_URL = 'http://127.0.0.1:5000';
+        //const API_URL = 'https://luciogiolli.pythonanywhere.com/';
+
+        const API_URL = 'http://127.0.0.1:5000';
         const $ = document.querySelector.bind(document);
 
         const api = {
@@ -252,6 +274,74 @@
             bot: { title: 'Bot', render: renderBot }
         };
 
+        let outLog = '';
+
+        class BotController {
+            constructor() {
+                this.apiUrl = API_URL;  // Update with your API URL
+                this.eventSource = null;
+            }
+
+            async startBot(username) {
+                const data = { username: localStorage.getItem('username') };
+                await api.post('/start_bot', data).then((res) => {
+                    toastr.success('Bot started successfully');
+                });
+                return data;
+            }
+
+            async stopBot() {
+                await api.post('/stop_bot').then((res) => {
+                    toastr.success('Bot stopped successfully');
+                });
+
+            }
+
+            connectToLogStream() {
+                this.eventSource = new EventSource(`${this.apiUrl}/stream_logs`);
+                this.eventSource.onmessage = (event) => {
+                    const logs = JSON.parse(event.data);
+                    logs.forEach(log => this.displayLog(log));
+                };
+            }
+
+            disconnectFromLogStream() {
+                if (this.eventSource) {
+                    this.eventSource.close();
+                    this.eventSource = null;
+                }
+            }
+
+            displayLog(log) {
+                // Implement this method to display the log in your UI
+                console.log(log);  // For now, just log to console
+                outLog += log + '\n';
+                //lascia 20 messaggi
+                if (outLog.split('\n').length > 20) {
+                    outLog = outLog.split('\n').slice(1).join('\n');
+                }
+                //aggiungi alla pagina del bot il log
+                document.getElementById('log').textContent = outLog;
+            }
+
+            async getBotStatus() {
+                const response = await fetch(`${this.apiUrl}/get_bot_status`);
+                const data = await response.json();
+                return data.running;
+            }
+        }
+        const botController = new BotController();
+        document.addEventListener('DOMContentLoaded', () => {
+            botController.connectToLogStream();
+            botController.displayLog({ message: 'Bot started', timestamp: new Date() });
+            botController.getBotStatus().then(status => {
+                if (status) {
+                    $('#botStatus').textContent = 'Running';
+                } else {
+                    //$('#botStatus').textContent = 'Stopped';
+                }
+            });
+        });
         function renderBot() {
             $('#mainContent').innerHTML = `
             <div>
@@ -264,14 +354,21 @@
                 </button>
             </div>
         `;
-            $('#startBotBtn').addEventListener('click', startBot);
-            $('#stopBotBtn').addEventListener('click', stopBot);
+            $('#startBotBtn').addEventListener('click', botController.startBot);
+            $('#stopBotBtn').addEventListener('click', botController.stopBot);
+            //attiviamo i log
+            $('#logContainer').classList.remove('hide');
+            $('#logContainer').classList.add('show');
+
         }
+
+        let botStarted = false;
 
         async function startBot() {
             try {
                 const data = { username: localStorage.getItem('username') };
-                await api.post('/start_bot', data);
+                await api.post('/start_bot', data).then((res) => {
+                });
                 toastr.success('Bot started successfully');
             } catch (error) {
                 toastr.error(error.error || 'Failed to start bot');
@@ -294,7 +391,7 @@
             const isLoggedIn = !!localStorage.getItem('username');
 
             if (isLoggedIn) {
-                ['dashboard', 'authors','bot'].forEach(route => {
+                ['dashboard', 'authors', 'bot'].forEach(route => {
                     navLinks.innerHTML += `<a href="#" class="cyberpunk-button px-3 py-1 rounded" onclick="navigate('${route}')">${routes[route].title}</a>`;
                 });
                 navLinks.innerHTML += `<a href="#" class="cyberpunk-button px-3 py-1 rounded" onclick="logout()">Logout</a>`;
@@ -327,6 +424,9 @@
                 <button onclick="navigate('register')" class="cyberpunk-button px-6 py-2 rounded text-lg">Get Started</button>
             </div>
         `;
+            //nascondi i log
+            $('#logContainer').classList.remove('show');
+            $('#logContainer').classList.add('hide');
         }
 
         function renderLogin() {
@@ -342,6 +442,9 @@
                 </form>
             </div>
         `;
+            //nascondi i log
+            $('#logContainer').classList.remove('show');
+            $('#logContainer').classList.add('hide');
             $('#loginForm').addEventListener('submit', handleLogin);
         }
 
@@ -381,6 +484,9 @@
                 </form>
             </div>
         `;
+            //nascondi i log
+            $('#logContainer').classList.remove('show');
+            $('#logContainer').classList.add('hide');
             $('#registerForm').addEventListener('submit', handleRegister);
         }
 
@@ -427,6 +533,9 @@
                 </div>
             </div>
         `;
+            //nascondi i log
+            $('#logContainer').classList.remove('show');
+            $('#logContainer').classList.add('hide');
         }
 
         function renderAuthors() {
@@ -448,6 +557,9 @@
                 </div>
             </div>
         `;
+            //nascondi i log
+            $('#logContainer').classList.remove('show');
+            $('#logContainer').classList.add('hide');
             $('#addAuthorBtn').addEventListener('click', showAddAuthorForm);
             $('#bulkEditBtn').addEventListener('click', bulkEditAuthors);
             $('#bulkDeleteBtn').addEventListener('click', bulkDeleteAuthors);
@@ -509,6 +621,9 @@
                 </form>
             </div>
         `;
+            //nascondi i log
+            $('#logContainer').classList.remove('show');
+            $('#logContainer').classList.add('hide');
             $('#addAuthorForm').addEventListener('submit', handleAddAuthor);
         }
 
@@ -567,6 +682,9 @@
                     </form>
                 </div>
             `;
+                //nascondi i log
+                $('#logContainer').classList.remove('show');
+                $('#logContainer').classList.add('hide');
                 $('#editAuthorForm').addEventListener('submit', handleEditAuthor);
             } catch (error) {
                 toastr.error('Failed to load author details');
@@ -638,6 +756,9 @@
                 </form>
             </div>
         `;
+            //nascondi i log
+            $('#logContainer').classList.remove('show');
+            $('#logContainer').classList.add('hide');
             $('#bulkEditForm').addEventListener('submit', handleBulkEdit);
         }
 
@@ -688,11 +809,6 @@
 
         function getSelectedAuthors() {
             console.log(Array.from(document.querySelectorAll('.author-checkbox:checked')));
-            //<div>
-            //     <input type="checkbox" class="author-checkbox mr-2" data-author-name="${author.name}">
-            //           <span>${author.name}</span> - Vote: ${author.vote_percentage}%, Delay: ${author.post_delay_minutes}min
-            //     </div>
-
             return Array.from(document.querySelectorAll('.author-checkbox:checked')).map(checkbox => checkbox.dataset.authorName);
         }
 
@@ -714,7 +830,6 @@
             timeOut: 3000
         };
 
-        // Start the app
         init();
     </script>
 </body>

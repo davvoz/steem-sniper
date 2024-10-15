@@ -7,6 +7,8 @@ from beem.account import Account
 from beem.exceptions import AccountDoesNotExistsException, VotingInvalidOnArchivedPost
 from beem.comment import Comment
 from beem.imageuploader import ImageUploader
+import queue
+import json
 
 # Configurazione del logger
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -25,6 +27,7 @@ class AuthorConfig:
         self.votes_today = 0
         self.last_vote_time = None
         self.insert_at_now = datetime.now()
+        self.log_queue = queue.Queue()
 
     def can_vote(self):
         now = datetime.now()
@@ -35,6 +38,7 @@ class AuthorConfig:
     def record_vote(self):
         self.votes_today += 1
         self.last_vote_time = datetime.now()
+        
 
 class SteemSniperBackend:
     def __init__(self):
@@ -47,7 +51,23 @@ class SteemSniperBackend:
         }
         self.author_configs = {}
         self.lock = threading.Lock()
+        #queue per i log
+        self.log_queue = queue.Queue()
 
+    def get_logs(self):
+        logs = []
+        while not self.log_queue.empty():
+            logs.append(self.log_queue.get())
+        return logs
+
+    def log(self, message, level='INFO'):
+        log_entry = {
+            'timestamp': datetime.now().isoformat(),
+            'level': level,
+            'message': message
+        }
+        self.log_queue.put(json.dumps(log_entry))
+    
     def configure(self, **kwargs):
         """Update global configuration with provided values."""
         self.config.update(kwargs)
@@ -66,6 +86,7 @@ class SteemSniperBackend:
             return True
         except Exception as e:
             logger.error(f"Failed to connect to Steem node: {str(e)}")
+            self.log("Failed to connect to Steem node", "ERROR")
             return False
 
     def validate_author(self, author):
@@ -75,6 +96,8 @@ class SteemSniperBackend:
             return True
         except AccountDoesNotExistsException:
             logger.error(f"Invalid target: {author}")
+            self.log("Invalid target: {author}", "ERROR")
+
             return False
 
     def get_latest_post(self, author):
@@ -84,7 +107,7 @@ class SteemSniperBackend:
             posts = account.get_blog(limit=1)
             return posts[0] if posts else None
         except Exception as e:
-            logger.error(f"Error retrieving latest post for {author}: {str(e)}")
+            self.log(f"Error retrieving latest post for {author}: {str(e)}", "ERROR")
             return None
 
     def has_already_voted(self, post, voter):
@@ -101,10 +124,10 @@ class SteemSniperBackend:
             if isinstance(image_url, dict) and 'url' in image_url:
                 return image_url['url']
             else:
-                logger.error(f"Image upload failed: {image_url}")
+                self.log(f"Image upload failed: {image_url}", "ERROR")
                 return None
         except Exception as e:
-            logger.error(f"Error uploading image: {str(e)}")
+            self.log(f"Error uploading image: {str(e)}", "ERROR")
             return None
 
     def comment_post(self, post, author_config):
@@ -119,12 +142,12 @@ class SteemSniperBackend:
                 if image_url:
                     comment_body += f"\n\n![image]({image_url})"
                 else:
-                    logger.warning("Image upload failed, comment will be without image.")
+                    self.log("Failed to upload image for comment", "ERROR")
             
             comment.reply(body=comment_body, author=voter_account.name)
             return True
         except Exception as e:
-            logger.error(f"Error adding comment: {str(e)}")
+            self.log(f"Error commenting on post: {str(e)}", "ERROR")
             return False
 
     def upvote_post(self, post, author):
@@ -133,15 +156,15 @@ class SteemSniperBackend:
         try:
             voter_account = Account(self.config['voter'], blockchain_instance=self.steem)
             if self.has_already_voted(post, voter_account.name):
-                logger.info(f"Already voted on this post: {post.title}")
+                self.log(f"Already voted on post: {post.title}", "INFO")
                 return False
             
             if not author_config.can_vote():
-                logger.info(f"Daily vote limit reached for author: {author} or  {author} has not posted since configured.")
+                self.log(f"Daily vote limit reached for {author}", "INFO")
                 return False
 
             post.upvote(weight=author_config.vote_percentage, voter=voter_account.name)
-            logger.info(f"Successfully voted on post: {post.title}")
+            self.log(f"Upvoted post: {post.title} by {author}", "INFO")
             author_config.record_vote()
 
             if author_config.add_comment:
@@ -149,10 +172,10 @@ class SteemSniperBackend:
 
             return True
         except VotingInvalidOnArchivedPost:
-            logger.error("Cannot vote on an archived post.")
+            self.log(f"Post is too old to be voted on: {post.title}", "INFO")
             return False
         except Exception as e:
-            logger.error(f"Error voting on post: {str(e)}")
+            self.log(f"Error upvoting post: {str(e)}", "ERROR")
             return False
 
     def get_post_creation_time(self, post):
@@ -171,14 +194,18 @@ class SteemSniperBackend:
             post_age = (current_time - post_time.replace(tzinfo=None)).total_seconds() / 60  # Convert to minutes
 
             logger.info(f"New post detected for {author}: {latest_post.permlink}")
+            self.log(f"New post detected for {author}: {latest_post.permlink}", "INFO")
             logger.info(f"Post age: {post_age:.2f} minutes")
+            self.log(f"Post age: {post_age:.2f} minutes", "INFO")
 
             if post_age >= config.post_delay_minutes:
                 self.upvote_post(latest_post, author)
             else:
                 logger.info(f"Post by {author} is too recent. Will check again in next cycle.")
+                self.log(f"Post by {author} is too recent. Will check again in next cycle.", "INFO")
         else:
             logger.info(f"No post available for '{author}'.")
+            self.log(f"No post available for '{author}'.", "INFO")
 
     def run_upvote(self):
         """Main loop for sniping posts."""
@@ -192,14 +219,17 @@ class SteemSniperBackend:
                 self.run_upvote_for_author(author, config)
 
             logger.info(f"Reloading... Next check in {self.config['interval']} seconds.")
+            self.log(f"Reloading... Next check in {self.config['interval']} seconds.", "INFO")
             time.sleep(self.config['interval'])  # breve intervallo tra i cicli
 
         logger.info("Sniper operation completed.")
+        self.log("Sniper operation completed.", "INFO")
 
     def start(self):
         """Start the sniping process."""
         if self.running:
             logger.warning("Sniper is already running!")
+            self.log("Sniper is already running!", "WARNING")
             return
 
         self.running = True
@@ -210,3 +240,4 @@ class SteemSniperBackend:
         """Stop the sniping process."""
         self.running = False
         logger.info("Stopping sniper...")
+        self.log("Stopping sniper...", "INFO")
